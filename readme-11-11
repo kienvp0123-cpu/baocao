@@ -1,0 +1,237 @@
+# BÁO CÁO CÁ NHÂN BÀI TẬP LỚN FOURSMART
+## README_11_11 – CATEGORY & HOME
+
+**Họ tên:** Nguyễn Xuân Kiên
+**GitHub:** kienvp0123  
+**Nhánh:** `feature/category-home`  
+**Repository:** https://github.com/LaiHuy05/FourSmart-new
+
+# I. MỤC TIÊU BÁO CÁO
+
+Trong bài báo cáo này, em tập trung vào ba năng lực: sử dụng AI Agent, kiểm soát mã nguồn và kết hợp công cụ kiểm thử.
+
+Em sử dụng các nghiệp vụ quản lý danh mục, hiển thị trang chủ và sản phẩm theo danh mục của FourSmart làm ví dụ minh họa.
+
+Mục tiêu của em là chứng minh khả năng hiểu hệ thống, xác định vị trí cần sửa và đánh giá được tính đúng đắn của mã nguồn.
+
+# II. Ý 1 – XÂY DỰNG HỆ THỐNG VỚI AI AGENT (3 ĐIỂM)
+
+## 2.1. Hiểu biết của em về AI Agent
+
+AI Agent là công cụ hỗ trợ lập trình viên phân tích và thực hiện công việc thông qua các yêu cầu bằng ngôn ngữ tự nhiên.
+
+Theo em, điểm quan trọng khi sử dụng Agent là cung cấp đầy đủ thông tin về cấu trúc dự án, nghiệp vụ và giới hạn thay đổi.
+
+Agent có thể đề xuất mã nguồn, nhưng em cần tự đánh giá xem mã nguồn đó có đúng với kiến trúc MVC và cơ sở dữ liệu hay không.
+
+## 2.2. Quy trình sử dụng
+
+Em xác định các bước:
+
+1. Phân tích yêu cầu.
+2. Xác định file và bảng dữ liệu liên quan.
+3. Cung cấp ngữ cảnh cho AI Agent.
+4. Yêu cầu phân tích trước khi viết code.
+5. Kiểm tra phần code được đề xuất.
+6. Kiểm thử và dùng Git diff theo dõi thay đổi.
+
+## 2.3. Ví dụ sử dụng AI với chức năng danh mục
+
+Trong dự án, `CategoryModel.php` có các phương thức:
+
+- `all()`: Lấy danh sách danh mục.
+- `find()`: Tìm danh mục theo ID.
+- `create()`: Thêm danh mục.
+- `update()`: Cập nhật danh mục.
+- `delete()`: Xóa danh mục.
+- `hasProducts()`: Kiểm tra danh mục có chứa sản phẩm hay không.
+
+Giả sử giảng viên yêu cầu ngăn việc thêm danh mục có tên chỉ gồm khoảng trắng, em có thể yêu cầu AI:
+
+> Phân tích chức năng thêm danh mục trong dự án PHP MVC FourSmart. Tìm vị trí kiểm tra tên danh mục, giải thích cơ chế hiện tại và đề xuất cách từ chối dữ liệu rỗng hoặc chỉ có khoảng trắng. Giữ nguyên cấu trúc Model và Controller. Đưa ra test case cần thực hiện.
+
+Khi phân tích code, em thấy `AdminCategoryController::add()` sử dụng:
+
+```php
+$name = trim($_POST['name'] ?? '');
+
+if ($name === '') {
+    $error = 'Tên danh mục không được để trống';
+}
+```
+
+Như vậy, yêu cầu đã có cơ chế xử lý trong mã nguồn hiện tại.
+Qua ví dụ này, em hiểu rằng cần yêu cầu AI kiểm tra những gì chương trình đã có trước khi sinh thêm code, tránh tạo ra những thay đổi không cần thiết.
+
+# III. Ý 2 – KIỂM SOÁT MÃ NGUỒN (5 ĐIỂM)
+
+## 3.1. Ý 2a – Kiểm soát tính năng
+
+### 3.1.1. Kiến trúc MVC của chức năng danh mục
+
+Các file liên quan gồm:
+
+- `mvc/model/CategoryModel.php`
+- `mvc/controller/admin/category_controller.php`
+- `mvc/controller/client/category_controller.php`
+- `mvc/controller/client/home_controller.php`
+- `mvc/view/admin/category/list.php`
+- `mvc/view/client/home.php`
+- `mvc/view/client/category.php`
+
+Trong chức năng trang chủ, ClientHomeController gọi:
+
+```php
+$categories = CategoryModel::all();
+$products = ProductModel::all();
+```
+
+Sau đó Controller nạp View trang chủ.
+
+Em hiểu rằng dữ liệu danh mục và sản phẩm được lấy từ Model rồi chuyển sang View để hiển thị, thay vì viết truy vấn trực tiếp trong giao diện.
+
+### 3.1.2. Phân tích chức năng xóa danh mục
+
+Trong `AdminCategoryController::delete()`, chương trình thực hiện các bước:
+
+1. Kiểm tra phương thức HTTP phải là POST.
+2. Kiểm tra CSRF token.
+3. Lấy ID danh mục.
+4. Gọi `CategoryModel::hasProducts()` để kiểm tra dữ liệu liên quan.
+5. Từ chối xóa nếu danh mục đang chứa sản phẩm.
+6. Thực hiện xóa nếu hợp lệ.
+
+Phương thức `hasProducts()` sử dụng câu truy vấn SQL dạng:
+
+```sql
+SELECT COUNT(*) AS total
+FROM product
+WHERE id_dm = ?
+```
+
+Em hiểu rằng dấu `?` là vị trí tham số của truy vấn được thực hiện qua lớp Database.
+
+Khi danh mục đang chứa sản phẩm, Controller trả về mã HTTP 409.
+
+Điều này giúp bảo đảm quy tắc nghiệp vụ và hạn chế lỗi dữ liệu liên quan.
+
+### 3.1.3. Ví dụ sửa code khi thầy yêu cầu
+
+Nếu thầy yêu cầu tên danh mục phải có tối thiểu 3 ký tự, em sẽ tìm hai phương thức `add()` và `update()` trong `mvc/controller/admin/category_controller.php`.
+
+Em có thể bổ sung kiểm tra sau khi loại bỏ khoảng trắng ở đầu và cuối:
+
+```php
+if (mb_strlen($name, 'UTF-8') < 3) {
+    $error = 'Tên danh mục phải có ít nhất 3 ký tự';
+}
+```
+
+Em cần kiểm tra môi trường PHP có hỗ trợ `mbstring`, đồng thời giữ lại những điều kiện kiểm tra hiện có.
+
+Sau khi sửa, em kiểm tra tên có 2 ký tự, 3 ký tự và chuỗi chỉ chứa khoảng trắng.
+
+Đây là ví dụ thực hành đề xuất, chưa phải tính năng đã được commit.
+
+## 3.2. Ý 2b – Kỹ năng sử dụng skill
+
+Theo em, skill là bộ quy trình chuyên biệt giúp AI Agent thực hiện công việc theo những bước được chuẩn hóa.
+Trong dự án, em có thể sử dụng skill phân tích mã nguồn để biểu diễn mối quan hệ:
+
+`ClientHomeController → CategoryModel / ProductModel → Database → Home View`
+
+và:
+
+`AdminCategoryController → CategoryModel → Database`
+
+Khi thay đổi cấu trúc danh mục, em có thể sử dụng kết quả phân tích để xác định những chức năng chịu ảnh hưởng như trang chủ, danh sách sản phẩm và trang quản trị danh mục.
+
+Ví dụ, khi đổi tên trường dữ liệu danh mục, em phải xác định tất cả những vị trí đang sử dụng trường đó để tránh gây lỗi hiển thị.
+
+Em hiểu rằng sơ đồ phụ thuộc chỉ là công cụ hỗ trợ. Kết quả cần được kiểm tra lại với mã nguồn thực tế.
+
+**Minh chứng cần bổ sung:** Công cụ hoặc skill đã chạy, kết quả phân tích và nhận xét của em.
+
+## 3.3. Ý 2c – Sử dụng Git log và Git diff
+
+Để theo dõi lịch sử nhánh:
+
+```bash
+git log feature/category-home --oneline
+```
+
+Để kiểm tra lịch sử Model:
+
+```bash
+git log feature/category-home --oneline -- mvc/model/CategoryModel.php
+```
+
+Để xem một commit cụ thể:
+
+```bash
+git show 9db05cf56
+```
+
+Commit `9db05cf56` có nội dung bảo vệ thao tác xóa danh mục khi đang chứa sản phẩm.
+
+Một số commit liên quan khác:
+
+- `b5cd5dd6a`: Hiển thị sản phẩm theo danh mục tại trang chủ.
+- `6499395bd`: Hoàn thiện trang sản phẩm theo danh mục.
+- `48d5fa0ab`: Hoàn thiện giao diện trang chủ và danh mục.
+
+Để so sánh nội dung thay đổi:
+
+```bash
+git diff HEAD~1 HEAD
+```
+
+Qua Git log, em biết được quá trình thay đổi. Qua Git diff, em kiểm tra những dòng được thêm hoặc xóa và xác định ảnh hưởng của thay đổi.
+
+Nếu đóng vai trò trưởng nhóm, em sẽ đánh giá một thành viên dựa trên mức độ hoàn thành yêu cầu, chất lượng code, khả năng hiểu và sửa chức năng, kết quả kiểm thử và lịch sử Git.
+
+Em không đánh giá dựa riêng vào số lượng commit vì một commit nhỏ cũng có thể giải quyết một lỗi nghiệp vụ quan trọng.
+
+# IV. Ý 3 – KẾT HỢP CÔNG CỤ KIỂM THỬ (2 ĐIỂM)
+
+## 4.1. Công cụ và phương pháp
+
+Em có thể sử dụng PHP CLI để kiểm tra cú pháp, PHPUnit để kiểm thử tự động, DevTools để kiểm tra thao tác giao diện và Postman để gửi request HTTP.
+
+Git diff hỗ trợ xác định phần thay đổi để chọn đúng chức năng cần kiểm thử lại.
+
+## 4.2. Test case đề xuất
+
+| Mã | Trường hợp | Kết quả mong đợi |
+|---|---|---|
+| C01 | Thêm danh mục với tên rỗng | Từ chối |
+| C02 | Thêm tên danh mục chỉ có khoảng trắng | Từ chối |
+| C03 | Tạo danh mục hợp lệ | Lưu thành công |
+| C04 | Sửa danh mục không tồn tại | HTTP 404 |
+| C05 | Xóa danh mục có sản phẩm | HTTP 409 |
+| C06 | Xóa danh mục bằng GET | HTTP 405 |
+| C07 | Thiếu CSRF token khi xóa | HTTP 403 |
+| C08 | Truy cập trang chủ | Hiển thị dữ liệu danh mục và sản phẩm |
+| C09 | Chọn một danh mục | Hiển thị sản phẩm tương ứng |
+
+Để kiểm thử việc hiển thị sản phẩm, em cần chuẩn bị dữ liệu mẫu thuộc nhiều danh mục khác nhau.
+
+Sau khi chạy, em cần đối chiếu danh sách sản phẩm thực tế với dữ liệu trong cơ sở dữ liệu.
+
+## 4.3. Hướng phát triển kiểm thử
+
+Em cần xây dựng những bài kiểm thử có kiểm tra kết quả thực tế thay vì chỉ in dữ liệu.
+
+Ví dụ, một trường hợp kiểm thử tự động có thể xác nhận rằng phương thức tìm danh mục trả về đúng ID và tên đã lưu.
+
+Các test case liên quan đến xóa cần sử dụng cơ sở dữ liệu thử nghiệm để tránh ảnh hưởng dữ liệu thật.
+
+# V. TỰ ĐÁNH GIÁ VÀ KẾT LUẬN
+
+Qua việc tìm hiểu module danh mục và trang chủ, em hiểu rằng xây dựng phần mềm với AI không chỉ là tạo giao diện hoặc viết được chức năng.
+
+Em cần nắm rõ đường đi của dữ liệu, biết vị trí xử lý nghiệp vụ và kiểm tra được tác động khi chỉnh sửa code.
+
+Git log và Git diff giúp em có cơ sở để đánh giá quá trình phát triển, còn các công cụ kiểm thử giúp xác định chương trình có đáp ứng yêu cầu hay không.
+
+Trong thời gian tiếp theo, em cần thực hành thêm skill phân tích mã nguồn và kiểm thử tự động để chứng minh rõ hơn khả năng vận dụng các công cụ vào dự án thực tế.
